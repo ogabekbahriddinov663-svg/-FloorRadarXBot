@@ -6,14 +6,14 @@ TOKEN = os.getenv("BOT_TOKEN")
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(
-        "Salom! 👋\n"
-        "NFT nomini yuboring, tekshiramiz."
+        "Salom! 👋\nGift nomini yuboring."
     )
 
 async def text(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    nft = update.message.text
+    gift = update.message.text
+
     await update.message.reply_text(
-        f"🔎 {nft}\n\n"
+        f"🎁 {gift}\n\n"
         "Floor narx tekshirilmoqda..."
     )
 
