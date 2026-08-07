@@ -2,7 +2,7 @@ from telegram import Update
 from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes
 import re
 
-TOKEN = "TOKENINGIZNI_BU_YERGA_QOYING"
+TOKEN = "8979939678:AAFCAPSFz5ESHeslQ2-sBV2emV0Jtmkt2JY"
 
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
