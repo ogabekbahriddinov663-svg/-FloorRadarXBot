@@ -1,5 +1,8 @@
+
 import os
 import re
+import threading
+from http.server import BaseHTTPRequestHandler, HTTPServer
 
 from telegram import Update
 from telegram.ext import (
@@ -14,8 +17,27 @@ from TelegramGifts import TelegramGifts
 
 
 TOKEN = os.getenv("TOKEN")
+PORT = int(os.getenv("PORT", 10000))
 
 gifts = TelegramGifts(cache_mode="http", asset_mode="lazy")
+
+
+# Render Web Service uchun HTTP server
+class HealthHandler(BaseHTTPRequestHandler):
+    def do_GET(self):
+        self.send_response(200)
+        self.send_header("Content-type", "text/plain")
+        self.end_headers()
+        self.wfile.write(b"FloorRadarXBot is running!")
+
+    def log_message(self, format, *args):
+        return
+
+
+def run_server():
+    server = HTTPServer(("0.0.0.0", PORT), HealthHandler)
+    print(f"Web server {PORT} portda ishga tushdi!")
+    server.serve_forever()
 
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -102,9 +124,16 @@ def main():
     if not TOKEN:
         raise RuntimeError("TOKEN environment variable topilmadi!")
 
+    # Render uchun web serverni alohida thread'da ishga tushiramiz
+    threading.Thread(
+        target=run_server,
+        daemon=True
+    ).start()
+
     app = Application.builder().token(TOKEN).build()
 
     app.add_handler(CommandHandler("start", start))
+
     app.add_handler(
         MessageHandler(
             filters.TEXT & ~filters.COMMAND,
