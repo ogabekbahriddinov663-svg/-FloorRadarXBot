@@ -38,10 +38,7 @@ class HealthHandler(BaseHTTPRequestHandler):
 
 
 def run_server():
-    server = HTTPServer(
-        ("0.0.0.0", PORT),
-        HealthHandler
-    )
+    server = HTTPServer(("0.0.0.0", PORT), HealthHandler)
     print(f"WEB SERVER: {PORT}", flush=True)
     server.serve_forever()
 
@@ -49,10 +46,150 @@ def run_server():
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(
         "Salom 👋\n\n"
-        "Telegram NFT linkini yuboring.\n\n"
-        "Misol:\n"
-        "https://t.me/nft/HomemadeCake-1453"
+        "🎁 Telegram Gift bot\n\n"
+        "/gifts — barcha giftlar\n"
+        "/search NOM — gift qidirish\n\n"
+        "NFT link yuborsangiz, uning ma'lumotlarini ham tekshiraman."
     )
+
+
+async def all_gifts(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await update.message.reply_text(
+        "⏳ Barcha giftlar yuklanmoqda..."
+    )
+
+    try:
+        regular_gifts = gifts.get_regular_gifts()
+
+        print(
+            f"GIFTLAR SONI: {len(regular_gifts)}",
+            flush=True
+        )
+
+        if not regular_gifts:
+            await update.message.reply_text(
+                "❌ Gift katalogi bo'sh."
+            )
+            return
+
+        # Telegram xabarining uzunligi cheklangan.
+        # Giftlarni bo'lib yuboramiz.
+        lines = []
+
+        for i, gift in enumerate(regular_gifts, 1):
+            name = getattr(gift, "full_name", None) or getattr(
+                gift, "name", "Noma'lum"
+            )
+
+            floor = getattr(gift, "floor_price", None)
+
+            if floor is not None:
+                price = f"{floor} TON"
+            else:
+                price = "Narx yo'q"
+
+            lines.append(
+                f"{i}. 🎁 {name}\n"
+                f"   💎 Floor: {price}"
+            )
+
+        # 3500 belgidan oshirmay bo'lib yuborish
+        chunk = ""
+        part = 1
+
+        for line in lines:
+            if len(chunk) + len(line) + 2 > 3500:
+                await update.message.reply_text(
+                    f"🎁 GIFTLAR — {part}-qism\n\n{chunk}"
+                )
+                part += 1
+                chunk = ""
+
+            chunk += line + "\n\n"
+
+        if chunk:
+            await update.message.reply_text(
+                f"🎁 GIFTLAR — {part}-qism\n\n{chunk}"
+            )
+
+    except Exception as e:
+        print(
+            f"GIFTLAR XATO: {repr(e)}",
+            flush=True
+        )
+
+        await update.message.reply_text(
+            "⚠️ Giftlar ro'yxatini olishda xatolik yuz berdi."
+        )
+
+
+async def search_gift(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if not context.args:
+        await update.message.reply_text(
+            "❌ Gift nomini yozing.\n\n"
+            "Misol:\n"
+            "/search HomemadeCake"
+        )
+        return
+
+    query = " ".join(context.args).lower()
+
+    await update.message.reply_text(
+        f"🔎 Qidirilmoqda: {query}"
+    )
+
+    try:
+        regular_gifts = gifts.get_regular_gifts()
+
+        found = []
+
+        for gift in regular_gifts:
+            name = (
+                getattr(gift, "full_name", None)
+                or getattr(gift, "name", "")
+            )
+
+            if query in name.lower():
+                found.append(gift)
+
+        if not found:
+            await update.message.reply_text(
+                f"❌ Gift topilmadi.\n\n"
+                f"🔎 Qidirilgan: {query}"
+            )
+            return
+
+        message = f"🎁 TOPILDI: {len(found)} ta\n\n"
+
+        for gift in found[:20]:
+            name = (
+                getattr(gift, "full_name", None)
+                or getattr(gift, "name", "Noma'lum")
+            )
+
+            floor = getattr(gift, "floor_price", None)
+
+            if floor is not None:
+                price = f"{floor} TON"
+            else:
+                price = "Narx yo'q"
+
+            message += (
+                f"🎁 {name}\n"
+                f"💎 Floor: {price}\n\n"
+            )
+
+        await update.message.reply_text(message)
+
+    except Exception as e:
+        print(
+            f"SEARCH XATO: {repr(e)}",
+            flush=True
+        )
+
+        await update.message.reply_text(
+            "⚠️ Qidirishda xatolik yuz berdi."
+        )
 
 
 async def check_nft(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -66,7 +203,7 @@ async def check_nft(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     if not match:
         await update.message.reply_text(
-            "❌ NFT link noto‘g‘ri.\n\n"
+            "❌ NFT link noto'g'ri.\n\n"
             "Misol:\n"
             "https://t.me/nft/HomemadeCake-1453"
         )
@@ -92,7 +229,8 @@ async def check_nft(update: Update, context: ContextTypes.DEFAULT_TYPE):
         if not info:
             await update.message.reply_text(
                 f"❌ Gift topilmadi.\n\n"
-                f"🔎 Qidirilgan: {collection}"
+                f"🔎 Qidirilgan: {collection}\n\n"
+                f"💡 /search {collection}"
             )
             return
 
@@ -138,8 +276,7 @@ async def check_nft(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
 
         await update.message.reply_text(
-            "⚠️ Gift ma’lumotlarini olishda "
-            "xatolik yuz berdi."
+            "⚠️ Gift ma'lumotlarini olishda xatolik yuz berdi."
         )
 
 
@@ -160,6 +297,14 @@ def main():
 
     bot.add_handler(
         CommandHandler("start", start)
+    )
+
+    bot.add_handler(
+        CommandHandler("gifts", all_gifts)
+    )
+
+    bot.add_handler(
+        CommandHandler("search", search_gift)
     )
 
     bot.add_handler(
