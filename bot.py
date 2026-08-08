@@ -10,7 +10,12 @@ from telegram.ext import (
     filters,
 )
 
+from TelegramGifts import TelegramGifts
+
+
 TOKEN = os.getenv("TOKEN")
+
+gifts = TelegramGifts(cache_mode="http", asset_mode="lazy")
 
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -23,37 +28,88 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 async def check_nft(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    text = update.message.text
+    text = update.message.text.strip()
 
     match = re.search(
-        r"https://t\.me/nft/([A-Za-z0-9]+)-(\d+)",
-        text
+        r"https?://t\.me/nft/([A-Za-z0-9_]+)-(\d+)",
+        text,
+        re.IGNORECASE
     )
 
-    if match:
-        collection = match.group(1)
-        nft_id = match.group(2)
-
-        await update.message.reply_text(
-            "✅ NFT topildi\n\n"
-            f"📦 Collection: {collection}\n"
-            f"🔢 ID: #{nft_id}\n\n"
-            "⏳ Floor price keyin qo‘shiladi..."
-        )
-    else:
+    if not match:
         await update.message.reply_text(
             "❌ NFT link noto‘g‘ri.\n\n"
             "Misol:\n"
             "https://t.me/nft/HexPot-56196"
         )
+        return
+
+    collection = match.group(1)
+    nft_id = match.group(2)
+
+    await update.message.reply_text(
+        f"🔎 NFT tekshirilmoqda...\n\n"
+        f"📦 Collection: {collection}\n"
+        f"🔢 ID: #{nft_id}"
+    )
+
+    try:
+        info = gifts.get_gift(collection)
+
+        if not info:
+            await update.message.reply_text(
+                "❌ Bu collection ma’lumotlar bazasidan topilmadi."
+            )
+            return
+
+        prices = info.get("prices", {})
+
+        tgmrkt = prices.get("tgmrkt_price_ton")
+        fragment = prices.get("fragment_price_ton")
+        getgems = prices.get("getgems_price_ton")
+
+        message = (
+            f"🎁 {collection} #{nft_id}\n\n"
+            f"💎 Floor narxlar:\n"
+        )
+
+        if fragment is not None:
+            message += f"🔹 Fragment: {fragment} TON\n"
+
+        if getgems is not None:
+            message += f"🔹 GetGems: {getgems} TON\n"
+
+        if tgmrkt is not None:
+            message += f"🔹 TGMrkt: {tgmrkt} TON\n"
+
+        if fragment is None and getgems is None and tgmrkt is None:
+            message += "❌ Hozircha floor narx topilmadi.\n"
+
+        message += f"\n🆔 NFT ID: #{nft_id}"
+
+        await update.message.reply_text(message)
+
+    except Exception as e:
+        print("XATO:", e)
+
+        await update.message.reply_text(
+            "⚠️ Narxni olishda xatolik yuz berdi.\n"
+            "Birozdan keyin qayta urinib ko‘ring."
+        )
 
 
 def main():
+    if not TOKEN:
+        raise RuntimeError("TOKEN environment variable topilmadi!")
+
     app = Application.builder().token(TOKEN).build()
 
     app.add_handler(CommandHandler("start", start))
     app.add_handler(
-        MessageHandler(filters.TEXT & ~filters.COMMAND, check_nft)
+        MessageHandler(
+            filters.TEXT & ~filters.COMMAND,
+            check_nft
+        )
     )
 
     print("Bot ishga tushdi!")
