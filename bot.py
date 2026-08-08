@@ -38,7 +38,7 @@ async def check_nft(update: Update, context: ContextTypes.DEFAULT_TYPE):
             "✅ NFT topildi\n\n"
             f"📦 Collection: {collection}\n"
             f"🔢 ID: #{nft_id}\n\n"
-            "⏳ Floor price funksiyasi keyin qo‘shiladi..."
+            "⏳ Floor price keyin qo‘shiladi..."
         )
     else:
         await update.message.reply_text(
